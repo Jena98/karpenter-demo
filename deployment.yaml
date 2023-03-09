@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inflate
+  namespace: default
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: inflate
+  template:
+    metadata:
+      labels:
+        app: inflate
+    spec:
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.2
+          resources:
+            requests:
+              cpu: 1
+      nodeSelector:
+        role: a10
+        provision: karpenter
+      affinity:     
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - a10
+            - matchExpressions:
+                - key: provision
+                  operator: In
+                  values:
+                  - karpenter                  
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - inflate
+            topologyKey: "kubernetes.io/hostname"
+            
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: inflate-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: inflate               

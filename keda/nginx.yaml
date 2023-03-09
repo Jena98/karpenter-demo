@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          resources:
+            requests:
+              cpu: 1m   
+      nodeSelector:
+        role: a10
+        provision: karpenter                   
+      affinity:
+        nodeAffinity:  # karpenter node 증설을 위한 노드어피니티.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: overprovisioning
+                operator: In
+                values:
+                - a10  
+            - matchExpressions:
+                - key: provision
+                  operator: In
+                  values:
+                  - karpenter                                               
+        podAntiAffinity:  # 파드 개수만큼 node 증설하기 위한 파드안티어피니티.
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - nginx
+            topologyKey: "kubernetes.io/hostname"  
